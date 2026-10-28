@@ -4,7 +4,7 @@ pipeline {
     }
     tools {
         jdk 'jdk21'
-        nodejs 'node16'
+        nodejs 'node20'
     }
     environment {
         SCANNER_HOME=tool 'mysonar'
@@ -29,7 +29,9 @@ pipeline {
         }
         stage("Quality Gates"){
             steps{
-                waitForQualityGate abortPipeline: false, credentialsId: 'NEW-SONAR-TOKEN'
+                timeout(time: 3, unit: 'MINUTES'){
+                    waitForQualityGate abortPipeline: false
+                }
             }
         }
         stage("NODE JS install"){
@@ -39,7 +41,7 @@ pipeline {
         }
         stage("OWASP Dependency Check"){
             steps{
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'Dp-Check'
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --noupdate', odcInstallation: 'Dp-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
@@ -70,7 +72,11 @@ pipeline {
         }
         stage("Deployed the Application"){
             steps{
-                sh 'docker run -itd --name cont-1 -p 2222:3000 sumanthtony/zomato-application:latest'
+                sh '''
+                    docker stop cont-1 || true
+                    docker rm cont-1 || true
+                    docker run -d --name cont-1 -p 2222:3000 sumanthtony/zomato-application:latest
+                '''
             }
         }
         
