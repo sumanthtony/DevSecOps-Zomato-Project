@@ -68,6 +68,12 @@ pipeline {
                 }
             }
         }
+        stage("Deployed the Application"){
+            steps{
+                sh 'docker run -itd --name cont-1 -p 2222:3000 sumanthtony/zomato-application:latest'
+            }
+        }
+        
         
     }
 }
