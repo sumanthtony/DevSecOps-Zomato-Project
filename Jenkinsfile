@@ -1,6 +1,7 @@
 pipeline {
     agent{
-      label 'dev'
+        label 'dev'
+    }
     tools {
         jdk 'jdk21'
         nodejs 'node16'
@@ -27,11 +28,46 @@ pipeline {
             }
         }
         stage("Quality Gates"){
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'NEW-SONAR-TOKEN'
+            steps{
+                waitForQualityGate abortPipeline: false, credentialsId: 'NEW-SONAR-TOKEN'
+            }
+        }
+        stage("NODE JS install"){
+            steps{
+                sh "npm install"
+            }
+        }
+        stage("OWASP Dependency Check"){
+            steps{
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'Dp-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage("Docker Image Build"){
+            steps{
+                sh "docker build -t myimage ."
+            }
+        }
+        stage("Trivy scan"){
+            steps{
+                sh "trivy fs . >> trivyfs.txt"
+            }
+        }
+        stage("Scan Docker Image"){
+            steps{
+                sh "trivy image myimage"
+            }
+        }
+        stage("Docker Build & Push to DockerHub"){
+            steps{
+                script{
+                    withDockerRegistry(credentialsId: 'docker-credentials') {
+                        sh 'docker tag myimage sumanthtony/zomato-application:latest'
+                        sh 'docker push sumanthtony/zomato-application:latest'
+}
                 }
             }
         }
+        
     }
 }
